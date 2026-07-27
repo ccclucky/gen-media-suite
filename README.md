@@ -27,7 +27,7 @@ gen-media-suite/
 ### Claude Code
 
 ```text
-/plugin marketplace add CCLUCKY/gen-media-suite
+/plugin marketplace add ccclucky/gen-media-suite
 /plugin install gen-media
 ```
 
@@ -36,7 +36,7 @@ gen-media-suite/
 仓库自带 `.codex-plugin/plugin.json`。若客户端版本不支持插件安装命令，用目录复制兜底（与 source-scout 同款做法）：
 
 ```powershell
-git clone https://github.com/CCLUCKY/gen-media-suite.git
+git clone https://github.com/ccclucky/gen-media-suite.git
 Copy-Item -Recurse gen-media-suite/plugins/gen-media/skills/gen-image $HOME/.codex/skills/gen-image
 Copy-Item -Recurse gen-media-suite/plugins/gen-media/skills/gen-video $HOME/.codex/skills/gen-video
 ```
@@ -45,7 +45,7 @@ macOS / Linux 同理，目标目录为 `~/.codex/skills/`。新建任务或重�
 
 ### WorkBuddy
 
-在 WorkBuddy 中贴仓库 URL（`https://github.com/CCLUCKY/gen-media-suite`）并说"装这个 skill"，其内置 install-github-skills 会先做安全审计再安装。或手动拷入 `~/.workbuddy/skills/`。
+在 WorkBuddy 中贴仓库 URL（`https://github.com/ccclucky/gen-media-suite`）并说"装这个 skill"，其内置 install-github-skills 会先做安全审计再安装。或手动拷入 `~/.workbuddy/skills/`。
 
 ### Cursor
 
