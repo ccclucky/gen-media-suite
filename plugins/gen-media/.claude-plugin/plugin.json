@@ -1,7 +1,7 @@
 {
   "name": "gen-media",
   "description": "Generate images and text-to-video clips through the user's own New API gateway.",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "author": {
     "name": "CCLUCKY"
   }

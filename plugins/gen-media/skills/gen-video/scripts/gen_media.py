@@ -24,7 +24,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
 
-VERSION = "2.4.0"
+VERSION = "2.5.0"
 
 DEFAULT_IMAGE_MODEL = "wan2.7-image-pro"
 DEFAULT_VIDEO_MODEL = "happyhorse-1.1-t2v"
@@ -430,10 +430,20 @@ def generate_image(args: argparse.Namespace) -> int:
     for url in urls:
         suffix = ".png"
         target = output_dir / f"generated_image_{timestamp()}_{index}{suffix}"
-        if url.startswith("data:"):
-            files.append(write_data_url(url, target))
-        else:
-            files.append(download_url(url, target))
+        try:
+            if url.startswith("data:"):
+                write_data_url(url, target)
+            else:
+                download_url(url, target)
+        except GenMediaError:
+            target.unlink(missing_ok=True)
+            index += 1
+            continue
+        if not target.exists() or target.stat().st_size == 0:
+            target.unlink(missing_ok=True)
+            index += 1
+            continue
+        files.append(target.resolve())
         index += 1
 
     for encoded in b64_values:
@@ -442,6 +452,10 @@ def generate_image(args: argparse.Namespace) -> int:
             target.write_bytes(base64.b64decode(encoded))
         except (ValueError, OSError) as exc:
             raise GenMediaError(f"Cannot decode b64_json image: {exc}") from exc
+        if not target.exists() or target.stat().st_size == 0:
+            target.unlink(missing_ok=True)
+            index += 1
+            continue
         files.append(target.resolve())
         index += 1
 
