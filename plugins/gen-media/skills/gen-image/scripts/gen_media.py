@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import base64
 import getpass
+import io
 import json
 import os
 import re
@@ -24,7 +25,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
 
-VERSION = "2.5.0"
+VERSION = "2.6.0"
 
 DEFAULT_IMAGE_MODEL = "wan2.7-image-pro"
 DEFAULT_VIDEO_MODEL = "happyhorse-1.1-t2v"
@@ -398,21 +399,107 @@ def write_data_url(value: str, target: Path) -> Path:
     return target.resolve()
 
 
+def request_multipart_edits(
+    url: str,
+    config: Config,
+    image_path: Path,
+    prompt: str,
+    model: str,
+    timeout: int = 120,
+) -> dict[str, Any]:
+    """POST multipart/form-data to /v1/images/edits with a reference image."""
+    boundary = f"----GenMediaEdit{int(time.time() * 1000)}"
+    image_bytes = image_path.read_bytes()
+    # Guess content type from extension
+    suffix = image_path.suffix.lower()
+    content_type = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+    }.get(suffix, "application/octet-stream")
+
+    body = io.BytesIO()
+    # image field
+    body.write(f"--{boundary}\r\n".encode())
+    body.write(
+        f'Content-Disposition: form-data; name="image"; filename="{image_path.name}"\r\n'.encode()
+    )
+    body.write(f"Content-Type: {content_type}\r\n\r\n".encode())
+    body.write(image_bytes)
+    body.write(b"\r\n")
+    # prompt field
+    body.write(f"--{boundary}\r\n".encode())
+    body.write(b'Content-Disposition: form-data; name="prompt"\r\n\r\n')
+    body.write(prompt.encode("utf-8"))
+    body.write(b"\r\n")
+    # model field
+    body.write(f"--{boundary}\r\n".encode())
+    body.write(b'Content-Disposition: form-data; name="model"\r\n\r\n')
+    body.write(model.encode("utf-8"))
+    body.write(b"\r\n")
+    # close
+    body.write(f"--{boundary}--\r\n".encode())
+
+    headers = {
+        "Authorization": f"Bearer {config.api_key}",
+        "Content-Type": f"multipart/form-data; boundary={boundary}",
+        "User-Agent": f"gen-media-skill/{VERSION}",
+    }
+    req = urllib.request.Request(
+        url, data=body.getvalue(), headers=headers, method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read()
+    except urllib.error.HTTPError as exc:
+        raw = exc.read()
+        detail = raw.decode("utf-8", errors="replace")
+        try:
+            parsed = json.loads(detail)
+            detail = extract_error_message(parsed) or detail
+        except json.JSONDecodeError:
+            pass
+        raise GenMediaError(f"HTTP {exc.code} from {url}: {detail}") from exc
+    except urllib.error.URLError as exc:
+        raise GenMediaError(f"Cannot connect to {url}: {exc.reason}") from exc
+
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except json.JSONDecodeError as exc:
+        preview = raw[:500].decode("utf-8", errors="replace")
+        raise GenMediaError(f"Expected JSON from {url}, received: {preview}") from exc
+
+
 def generate_image(args: argparse.Namespace) -> int:
     config = load_config()
     output_dir = safe_output_dir(args.output_dir)
     model = args.model or config.image_model
-    endpoint = f"{config.base_url}/v1/images/generations"
-    payload = {
-        "model": model,
-        "prompt": args.prompt,
-        "size": args.size,
-        "n": args.count,
-        "response_format": "url",
-    }
-    result = request_json(
-        "POST", endpoint, config, payload, timeout=args.request_timeout
-    )
+
+    # Reference-image branch: use /v1/images/edits (multipart)
+    if args.reference_image:
+        ref_path = Path(args.reference_image).expanduser().resolve()
+        if not ref_path.exists():
+            raise GenMediaError(f"Reference image not found: {ref_path}")
+        # Force wan model for edits (qwen series doesn't support it)
+        if model.startswith("qwen-image"):
+            model = DEFAULT_IMAGE_MODEL
+        endpoint = f"{config.base_url}/v1/images/edits"
+        result = request_multipart_edits(
+            endpoint, config, ref_path, args.prompt, model, timeout=args.request_timeout
+        )
+    else:
+        endpoint = f"{config.base_url}/v1/images/generations"
+        payload = {
+            "model": model,
+            "prompt": args.prompt,
+            "size": args.size,
+            "n": args.count,
+            "response_format": "url",
+        }
+        result = request_json(
+            "POST", endpoint, config, payload, timeout=args.request_timeout
+        )
     error_message = extract_error_message(result)
     if error_message and not result.get("data"):
         raise GenMediaError(error_message)
@@ -686,6 +773,10 @@ def build_parser() -> argparse.ArgumentParser:
     image_parser.add_argument("--size", default="2048x2048")
     image_parser.add_argument("--count", type=int, default=1, choices=range(1, 5))
     image_parser.add_argument("--model", help="One-off model override.")
+    image_parser.add_argument(
+        "--reference-image",
+        help="Path to a reference image for image-to-image editing (multipart edits endpoint).",
+    )
     image_parser.add_argument("--output-dir")
     image_parser.add_argument("--request-timeout", type=int, default=300)
     image_parser.set_defaults(func=generate_image)
