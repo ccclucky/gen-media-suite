@@ -24,7 +24,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
 
-VERSION = "2.1.0"
+VERSION = "2.2.0"
 
 DEFAULT_IMAGE_MODEL = "wan2.7-image-pro"
 DEFAULT_VIDEO_MODEL = "happyhorse-1.1-t2v"
@@ -176,11 +176,11 @@ def load_config() -> Config:
         else:
             raise GenMediaError(
                 f"CONFIG_MISSING: no configuration at {CONFIG_FILE}. "
-                "Have the user run this in their own terminal session "
-                "(agent shells have no TTY for hidden input): "
-                f'python "{SCRIPT_PATH}" configure --base-url "<New API Base URL>" '
-                "The API key prompt hides input; never pass the key in chat "
-                "or command arguments."
+                "Ask the user for their Base URL and API Key right here in chat, "
+                "then run: "
+                f'python "{SCRIPT_PATH}" configure --base-url "<url>" --api-key "<key>" '
+                "(the key passes through this chat once and is saved to the local "
+                "config; for a no-chat alternative use the GEN_MEDIA_* env vars)."
             )
 
     try:

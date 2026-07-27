@@ -1,79 +1,81 @@
 ---
 name: gen-video
-description: Generate text-to-video clips through the user's own New API gateway. Use when the user asks to create, generate, render, or download a video, clip, animation, camera move, or moving scene. For stills use gen-image.
+description: 生成或下载文生视频。用户要做/生成/下载 video、视频、片段、动画、运镜、动态画面时启用。静态图请用 gen-image。
 argument-hint: "[视频描述]"
 ---
 
-# Gen Video
+# 生视频
 
-Text-to-video through the user's own New API gateway. Script: `scripts/gen_media.py` relative to this skill folder. Reply in the user's language.
+通过用户自己的 New API 网关做文生视频。脚本：本 skill 目录下的 `scripts/gen_media.py`。
 
-## Onboard — first use only
+> 语言铁律：所有面向用户的文字一律用中文，包括 brief 卡片、确认门、提问、报错解释。脚本 stdout 是英文，读完后翻译成中文再回复。
 
-1. Run `python "<skill-dir>/scripts/gen_media.py" show-config`.
-   - Prints Base URL + masked key → onboard done.
-   - Stderr contains `CONFIG_MISSING` → continue.
-2. Ask the user for their New API Base URL in chat (not a secret).
-3. Hand the user this command to run in their own terminal session (agent shells have no TTY for hidden input). The key prompt hides input; the key stays out of chat, command arguments, and logs:
+## 首次配置（onboard）
 
-   ```text
-   python "<skill-dir>/scripts/gen_media.py" configure --base-url "<url>"
+1. 跑 `python "<skill-dir>/scripts/gen_media.py" show-config`。
+   - 打出 Base URL + 掩码 Key → 配置完成，跳过本段。
+   - stderr 含 `CONFIG_MISSING` → 继续。
+2. 在对话里向用户收 **Base URL** 和 **API Key**（一句话一起问，或分两行收；别让用户切去终端跑命令）。
+3. 收齐后跑：
+
+   ```bash
+   python "<skill-dir>/scripts/gen_media.py" configure --base-url "<url>" --api-key "<key>"
    ```
 
-4. Re-run `show-config`. Done when it prints the masked key.
+   Key 只在本次对话出现这一次；之后只用 `show-config` 的掩码输出，绝不在回复里复述完整 Key。
 
-Env override: `GEN_MEDIA_BASE_URL` + `GEN_MEDIA_API_KEY` skip the config file.
+4. 再跑 `show-config` 验证，看到掩码 Key 即完成。
 
-## Pick the model — once, then switch on demand
+> 给用户的安全说明（一句话带过，别卡流程）：Key 会写入本地 `~/.gen-media/config.json`（权限 600），并经过本次对话一次；介意可改用环境变量 `GEN_MEDIA_BASE_URL` + `GEN_MEDIA_API_KEY`（不进对话）。
 
-1. Run `python "<skill-dir>/scripts/gen_media.py" list-models` and show the user the catalog.
-2. Text-to-video default: `happyhorse-1.1-t2v`. The `i2v` / `r2v` variants need image input and are outside this skill's prompt-only pipeline — the script rejects them.
-3. Persist: `python "<skill-dir>/scripts/gen_media.py" set-model --video <model>`. One-off: `--model <model>` on the generate command.
+## 选模型（一次设置，随切随用）
 
-Done when: `show-config` prints the chosen video model.
+1. 跑 `list-models`，把目录给用户看。
+2. 文生视频默认：`happyhorse-1.1-t2v`。`i2v`/`r2v` 需要图片输入，本 skill 只走文本管线，脚本会拒绝。
+3. 持久化：`set-model --video <model>`。单次试：生成命令加 `--model <model>`。
+4. 完成判定：`show-config` 打出所选视频模型。
 
-## Craft the brief
+## 打磨 brief（核心体验，别拿一句话直接去生成）
 
-Never fire a vague one-liner at the model. Resolve these slots first; fill what the request implies, ask only what it cannot:
+先补齐这六个槽位；能从请求推断的就填上并一句话声明假设，推断不了且猜错会烧 Credits 时才问（最多问 2 个）：
 
-1. **Subject + action** — what moves, and how (one subject per shot; multiple subjects melt).
-2. **Environment** — where, when, weather/time of day.
-3. **Camera** — one movement per shot: push-in / pull-back / pan / orbit / drone dive.
-4. **Timeline beats** — split the duration: what happens 0–2s, 2–4s, final second. No beats = static frame.
-5. **Format** — platform decides ratio: desktop ad `16:9`, mobile/short-video `9:16`; resolution `1080P` default (`720P` for cheap drafts); duration `5` seconds default (3–15).
-6. **Light & mood** — named lighting beats adjectives; one mood, not three.
+1. **主体+动作** —— 什么在动、怎么动（一镜一主体；多主体会融化）。
+2. **环境** —— 地点、时间、天气。
+3. **镜头** —— 一镜一个运动：推进/拉远/摇/环绕/无人机俯冲。
+4. **时间线节拍** —— 按时长切：0-2s 发生什么、2-4s、最后一秒。无节拍 = 静止帧。
+5. **格式** —— 平台定比例：桌面广告 `16:9`，手机/短视频 `9:16`；分辨率默认 `1080P`（省额度草稿 `720P`）；时长默认 `5` 秒（3–15）。
+6. **光线与情绪** —— 具名光线胜过形容词；单一情绪，别堆三个。
 
-- Vague request ("随便来个视频") → propose exactly 3 distinct directions (scene + camera), one line each; the user picks. Then fill the remaining slots.
-- Ask at most 2 questions total, and only when a wrong guess would burn credits. Otherwise infer, state the assumptions in one line, and proceed.
-- Add no logos, subtitles, or people unless asked.
-- Done when: final prompt + ratio + resolution + duration decided.
+- 模糊请求（「随便来个视频」）→ 给 3 个方向（场景+镜头，每个一行），让用户挑；选完再补其余槽位。
+- 不加 logo、字幕、人物，除非用户要。
+- 完成判定：最终 prompt + 比例 + 分辨率 + 时长 全部确定。
 
-Camera vocabulary, lighting terms, timeline templates, failure fixes → `references/prompt-guide.md` (load when the request is vague or the user wants better results).
+镜头词汇、光线词、时间线模板、失败对策 → `references/prompt-guide.md`（需求模糊或用户要更好效果时加载）。
 
-## Green-light
+## 确认门
 
-Video burns credits. Show the full brief — prompt, model, ratio, resolution, duration — and wait for the user's explicit yes. No yes, no submit.
+视频烧 Credits。先把完整 brief（prompt + 模型 + 比例 + 分辨率 + 时长）摆给用户，等他明确说「行/可以/生成」才提交。没说行，不提交。
 
-## Generate
+## 生成
 
 ```bash
 python "<skill-dir>/scripts/gen_media.py" video --prompt "<prompt>" --resolution "1080P" --ratio "16:9" --duration 5
 ```
 
-The script submits, polls, downloads the MP4, and prints its path; wait for it inside the script's timeout. Report the final file path plus the final prompt. No success claim until the MP4 exists locally.
+脚本提交、轮询、下载 MP4、打路径；在脚本超时内等它跑完。回报最终文件路径 + 最终 prompt。MP4 本地存在前不许声称成功。
 
-On failure: report the API error verbatim, then triage in this order — model permission → channel model list → quota → task polling service.
+失败时：原文报 API 错误，再按此顺序排查 —— 模型权限 → 渠道模型列表 → 额度 → 任务轮询服务。
 
-## Iterate
+## 迭代
 
-After delivery, offer one concrete next take (new angle / longer cut / different light).
+交付后给一个具体的下一版方向（新角度/更长切片/换光线）。
 
-## Rules
+## 规则
 
-- Bundled script only; no ad-hoc curl.
-- The full API key is never printed, echoed, or logged, and is never written into the project directory.
-- Save to the current working directory unless the user names an output directory.
+- 只用自带脚本，不临时拼 curl。
+- 完整 API Key 绝不写进项目目录；回复里只用掩码，不复述完整 Key。
+- 默认存当前工作目录，除非用户指定输出目录。
 
-## Update
+## 更新
 
-User asks to update gen-media → use the host's plugin / skill update mechanism (Claude Code: `/plugin update gen-media`; Codex / WorkBuddy: pull the repo and recopy the skill folders). Config at `~/.gen-media/config.json` lives outside the skill folders and survives updates.
+用户要更新 gen-media → 走宿主的插件/技能更新机制（Claude Code：`/plugin update gen-media`；Codex/WorkBuddy：拉仓库重拷 skill 文件夹）。配置在 `~/.gen-media/config.json`，skill 目录之外，更新不影响。

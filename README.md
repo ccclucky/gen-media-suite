@@ -53,18 +53,19 @@ Cursor 暂无 skill 系统。把 `plugins/gen-media/skills/gen-image/SKILL.md` �
 
 ## 凭证配置（一次性，所有 agent 共用）
 
-首次使用时 agent 会自动引导。手动配置：
+直接在对话里把 **Base URL** 和 **API Key** 告诉 agent，它会一步写入本地配置，不用切去终端：
 
-```bash
-python <skill目录>/scripts/gen_media.py configure --base-url "https://你的NewAPI地址"
+```text
+Base URL: https://你的NewAPI地址
+API Key: sk-xxxxxxxx
 ```
 
-API Key 通过隐藏输入提示录入，不进命令行历史、不进聊天记录。配置保存在：
+agent 收到后会跑 `configure --base-url <url> --api-key <key>` 写入：
 
 - Windows：`%USERPROFILE%\.gen-media\config.json`
 - macOS / Linux：`~/.gen-media/config.json`
 
-该文件权限 600，不在任何项目目录内，不进 Git。企业 / CI 环境可用环境变量覆盖：`GEN_MEDIA_BASE_URL`、`GEN_MEDIA_API_KEY`。
+该文件权限 600，不在任何项目目录内，不进 Git。Key 会经过本次对话一次——这是「直接输入」便利的代价；介意的用环境变量 `GEN_MEDIA_BASE_URL` + `GEN_MEDIA_API_KEY`（完全不进对话，适合企业/CI）。
 
 其他命令：`show-config`（查看掩码配置）、`reset-config`（清除配置）、`version`。
 
