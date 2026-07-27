@@ -24,7 +24,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
 
-VERSION = "2.2.0"
+VERSION = "2.4.0"
 
 DEFAULT_IMAGE_MODEL = "wan2.7-image-pro"
 DEFAULT_VIDEO_MODEL = "happyhorse-1.1-t2v"

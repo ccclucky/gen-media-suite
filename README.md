@@ -12,6 +12,8 @@
 gen-media-suite/
   .claude-plugin/marketplace.json     # Claude Code 市场入口
   .agents/plugins/marketplace.json    # 通用 agents 市场入口（WorkBuddy 等）
+  shared/gen_media.py                 # 脚本唯一真源（维护者编辑这里）
+  sync.sh                             # 维护者用：把 shared/ 同步进两个 skill
   plugins/gen-media/
     .claude-plugin/plugin.json        # Claude Code 插件清单
     .codex-plugin/plugin.json         # Codex 插件清单
@@ -20,7 +22,7 @@ gen-media-suite/
       gen-video/
 ```
 
-每个 skill 文件夹自包含（SKILL.md + scripts/ + references/），可直接拷入任何 agent 的 skills 目录。
+每个 skill 文件夹自包含（SKILL.md + scripts/ + references/），可直接拷入任何 agent 的 skills 目录。`scripts/gen_media.py` 在两个 skill 内各有一份拷贝，**唯一真源是 `shared/gen_media.py`**；改脚本后跑 `bash sync.sh` 同步（维护者流程，终端用户无需关心）。
 
 ## 安装
 

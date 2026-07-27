@@ -1,6 +1,6 @@
 {
   "name": "gen-media",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Generate images and text-to-video clips through the user's own New API gateway.",
   "skills": "./skills/",
   "interface": {
