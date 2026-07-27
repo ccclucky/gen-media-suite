@@ -1,0 +1,13 @@
+{
+  "name": "gen-media-suite",
+  "owner": {
+    "name": "CCLUCKY"
+  },
+  "plugins": [
+    {
+      "name": "gen-media",
+      "source": "./plugins/gen-media",
+      "description": "Generate images and text-to-video clips through the user's own New API gateway."
+    }
+  ]
+}

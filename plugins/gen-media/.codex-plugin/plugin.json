@@ -1,0 +1,11 @@
+{
+  "name": "gen-media",
+  "version": "2.1.0",
+  "description": "Generate images and text-to-video clips through the user's own New API gateway.",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Gen Media",
+    "shortDescription": "Generate images and videos via your own New API gateway.",
+    "longDescription": "Marketing-grade image generation and text-to-video clips through each user's own New API gateway, with prompt-crafting guidance and a private one-time credential setup shared by every agent."
+  }
+}
